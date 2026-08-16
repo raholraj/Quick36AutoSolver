@@ -43,6 +43,6 @@
         android:textSize="13sp"
         android:lineSpacingExtra="4dp"
         android:textColor="#555555"
-        android:text="After both steps:\n• Floating button appears\n• Open Quick36\n• Tap floating button to ON\n• Long-press for debug panel\n• Use Set as Target if package wrong" />
+        android:text="After both steps:\n• The floating button appears on screen\n• Open Quick36 app\n• Tap the floating button → ON\n• It will auto-detect &amp; solve every question\n\nLong-press the button to see the debug panel.\nUse 'Set as Target' if package name is wrong." />
 
 </LinearLayout>
