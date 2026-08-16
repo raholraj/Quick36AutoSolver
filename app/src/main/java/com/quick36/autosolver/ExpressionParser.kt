@@ -2,7 +2,7 @@ package com.quick36.autosolver
 
 /**
  * Parses math expressions and solves them.
- * Supports: +, -, x/X/*, / 
+ * Supports: +, -, x/X/*, /
  * Examples: "4 + 4", "12 x 7", "9 / 3", "8 * 6", "15 - 3", "36 / 4"
  */
 object ExpressionParser {
@@ -17,8 +17,8 @@ object ExpressionParser {
     fun solve(raw: String): Int? {
         // Normalize common unicode operators before matching
         val normalized = raw
-            .replace('\u00d7', 'x')  // ×
-            .replace('\u00f7', '/')  // ÷
+            .replace('\u00d7', 'x')  // multiplication sign
+            .replace('\u00f7', '/')  // division sign
             .trim()
         val match = EXPR_REGEX.find(normalized) ?: return null
         val (aStr, op, bStr) = match.destructured
