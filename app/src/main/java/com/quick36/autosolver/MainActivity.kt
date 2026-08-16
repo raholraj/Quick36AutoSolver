@@ -1,6 +1,5 @@
 package com.quick36.autosolver
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -23,7 +22,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceedInstanceState)
+        super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         statusText = findViewById(R.id.statusText)
@@ -53,7 +52,6 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refreshStatus()
-        // If permission was just granted in Settings, start the overlay automatically.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)) {
             startOverlay()
         }
@@ -72,8 +70,8 @@ class MainActivity : AppCompatActivity() {
         val accEnabled = isAccessibilityServiceEnabled()
         val overlayEnabled = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)
         statusText.text = buildString {
-            append(if (accEnabled) "Accessibility: ENABLED ✓\n" else "Accessibility: NOT enabled\n")
-            append(if (overlayEnabled) "Overlay: ENABLED ✓" else "Overlay: NOT enabled")
+            append(if (accEnabled) "Accessibility: ENABLED \u2713\n" else "Accessibility: NOT enabled\n")
+            append(if (overlayEnabled) "Overlay: ENABLED \u2713" else "Overlay: NOT enabled")
         }
     }
 
