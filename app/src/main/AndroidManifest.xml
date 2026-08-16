@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Floating overlay permission -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Required for foreground services -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Required if you enable the MediaProjection / OCR screen-capture path -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
     <application
         android:allowBackup="false"
@@ -12,6 +17,7 @@
         android:label="@string/app_name"
         android:theme="@style/Theme.AppCompat.Light">
 
+        <!-- Main launcher screen -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -21,6 +27,7 @@
             </intent-filter>
         </activity>
 
+        <!-- Accessibility service — monitors ALL packages so we can detect Quick36 -->
         <service
             android:name=".SolverAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
@@ -33,6 +40,7 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
+        <!-- Floating overlay foreground service -->
         <service
             android:name=".OverlayService"
             android:exported="false"
