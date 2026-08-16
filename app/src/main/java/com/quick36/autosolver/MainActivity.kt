@@ -28,12 +28,13 @@ class MainActivity : AppCompatActivity() {
 
         enableOverlayBtn.setOnClickListener {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-                val intent = Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:$packageName")
+                startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName")
+                    )
                 )
-                startActivity(intent)
-                Toast.makeText(this, "Allow the overlay permission, then tap this button again", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Allow overlay, then tap again", Toast.LENGTH_LONG).show()
             } else {
                 startOverlay()
             }
@@ -69,11 +70,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun isAccessibilityServiceEnabled(): Boolean {
-        val expectedComponentName = "$packageName/${SolverAccessibilityService::class.java.name}"
-        val enabledServices = Settings.Secure.getString(
+        val expected = "$packageName/${SolverAccessibilityService::class.java.name}"
+        val enabled = Settings.Secure.getString(
             contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
         ) ?: return false
-        return enabledServices.split(":").any { it.equals(expectedComponentName, ignoreCase = true) }
+        return enabled.split(":").any { it.equals(expected, ignoreCase = true) }
     }
 }

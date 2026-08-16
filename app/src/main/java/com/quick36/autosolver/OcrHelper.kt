@@ -16,9 +16,8 @@ class OcrHelper {
     }
 
     fun recognize(bitmap: Bitmap, onResult: (String?) -> Unit) {
-        val image = InputImage.fromBitmap(bitmap, 0)
-        recognizer.process(image)
-            .addOnSuccessListener { visionText -> onResult(visionText.text) }
+        recognizer.process(InputImage.fromBitmap(bitmap, 0))
+            .addOnSuccessListener { onResult(it.text) }
             .addOnFailureListener { onResult(null) }
     }
 
@@ -27,8 +26,10 @@ class OcrHelper {
         val top = (source.height * 0.28f).toInt()
         val right = (source.width * 0.95f).toInt()
         val bottom = (source.height * 0.38f).toInt()
-        val width = (right - left).coerceAtLeast(1)
-        val height = (bottom - top).coerceAtLeast(1)
-        return Bitmap.createBitmap(source, left, top, width, height)
+        return Bitmap.createBitmap(
+            source, left, top,
+            (right - left).coerceAtLeast(1),
+            (bottom - top).coerceAtLeast(1)
+        )
     }
 }
