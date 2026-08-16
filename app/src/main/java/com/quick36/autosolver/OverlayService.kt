@@ -27,7 +27,6 @@ class OverlayService : Service(), AutomationState.StateListener {
     private lateinit var questionLine: TextView
     private lateinit var answerLine: TextView
     private lateinit var params: WindowManager.LayoutParams
-
     private var panelVisible = false
 
     companion object {
@@ -51,9 +50,9 @@ class OverlayService : Service(), AutomationState.StateListener {
         questionLine = rootView.findViewById(R.id.questionLine)
         answerLine = rootView.findViewById(R.id.answerLine)
 
-        val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        } else {
+        else {
             @Suppress("DEPRECATION")
             WindowManager.LayoutParams.TYPE_PHONE
         }
@@ -66,8 +65,7 @@ class OverlayService : Service(), AutomationState.StateListener {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = 40
-            y = 200
+            x = 40; y = 200
         }
 
         setupTouch()
@@ -77,30 +75,17 @@ class OverlayService : Service(), AutomationState.StateListener {
     }
 
     private fun setupTouch() {
-        var initialX = 0
-        var initialY = 0
-        var touchX = 0f
-        var touchY = 0f
-        var moved = false
-
-        toggleButton.setOnTouchListener { _, event ->
-            when (event.action) {
+        var ix = 0; var iy = 0; var tx = 0f; var ty = 0f; var moved = false
+        toggleButton.setOnTouchListener { _, e ->
+            when (e.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    initialX = params.x
-                    initialY = params.y
-                    touchX = event.rawX
-                    touchY = event.rawY
-                    moved = false
-                    true
+                    ix = params.x; iy = params.y; tx = e.rawX; ty = e.rawY; moved = false; true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val dx = (event.rawX - touchX).toInt()
-                    val dy = (event.rawY - touchY).toInt()
+                    val dx = (e.rawX - tx).toInt(); val dy = (e.rawY - ty).toInt()
                     if (kotlin.math.abs(dx) > 8 || kotlin.math.abs(dy) > 8) moved = true
-                    params.x = initialX + dx
-                    params.y = initialY + dy
-                    windowManager.updateViewLayout(rootView, params)
-                    true
+                    params.x = ix + dx; params.y = iy + dy
+                    windowManager.updateViewLayout(rootView, params); true
                 }
                 MotionEvent.ACTION_UP -> {
                     if (!moved) {
@@ -112,7 +97,6 @@ class OverlayService : Service(), AutomationState.StateListener {
                 else -> false
             }
         }
-
         toggleButton.setOnLongClickListener {
             panelVisible = !panelVisible
             debugPanel.visibility = if (panelVisible) View.VISIBLE else View.GONE
@@ -129,27 +113,24 @@ class OverlayService : Service(), AutomationState.StateListener {
         toggleButton.text = if (on) "ON" else "OFF"
         toggleButton.setBackgroundColor(if (on) 0xCC00AA55.toInt() else 0xCC222222.toInt())
         statusLine.text = "Status: ${AutomationState.lastStatus}"
-        packageLine.text = "Package: ${AutomationState.lastSeenPackage}"
-        questionLine.text = "Question: ${AutomationState.lastQuestion}"
-        answerLine.text = "Answer: ${AutomationState.lastAnswer}"
+        packageLine.text = "Pkg: ${AutomationState.lastSeenPackage}"
+        questionLine.text = "Q: ${AutomationState.lastQuestion}"
+        answerLine.text = "A: ${AutomationState.lastAnswer}"
     }
 
     private fun startAsForeground() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID, "Quick36 Overlay", NotificationManager.IMPORTANCE_LOW
-            )
-            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+            val ch = NotificationChannel(CHANNEL_ID, "Quick36 Overlay", NotificationManager.IMPORTANCE_LOW)
+            getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
         }
-        val pending = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE
+        val pi = PendingIntent.getActivity(
+            this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
         )
         val notif = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Quick36 AutoSolver")
-            .setContentText("Floating control is active")
+            .setContentText("Floating control active")
             .setSmallIcon(android.R.drawable.ic_menu_manage)
-            .setContentIntent(pending)
+            .setContentIntent(pi)
             .setOngoing(true)
             .build()
         startForeground(NOTIF_ID, notif)

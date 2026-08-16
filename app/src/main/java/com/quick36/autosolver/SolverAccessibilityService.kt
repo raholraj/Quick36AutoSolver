@@ -12,8 +12,6 @@ class SolverAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "Quick36AutoSolver"
-        private const val TARGET_PACKAGE = "ch.quick36.quick36"
-        private const val QUESTION_VIEW_ID = "ch.quick36.quick36:id/question_text"
     }
 
     private lateinit var gestureHelper: GestureHelper
@@ -28,24 +26,27 @@ class SolverAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         gestureHelper = GestureHelper(this)
         ocrHelper.warmUp()
-        Log.d(TAG, "Service connected and warmed up")
         AutomationState.update(status = "Service connected")
+        Log.i(TAG, "Service connected")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
-        val eventPackage = event.packageName?.toString() ?: return
+        val pkg = event.packageName?.toString() ?: return
+        AutomationState.update(seenPackage = pkg)
 
-        // Always track last seen package so the overlay can show it for debugging
-        AutomationState.update(seenPackage = eventPackage)
+        val target = AutomationState.targetPackage
+        val inTarget = pkg == target
+        AutomationState.update(inTargetApp = inTarget)
 
-        if (eventPackage != TARGET_PACKAGE) return
+        if (!inTarget) return
         if (!AutomationState.isActive) {
-            AutomationState.update(status = "Paused (tap floating button to start)")
+            AutomationState.update(status = "Paused — tap floating button")
             return
         }
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED &&
-            event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+            event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            event.eventType != AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
         ) return
         if (answering) return
 
@@ -54,7 +55,7 @@ class SolverAccessibilityService : AccessibilityService() {
             val question = findQuestionInNodeTree(root) ?: return
             handleQuestion(question, root)
         } catch (t: Throwable) {
-            Log.e(TAG, "Error in onAccessibilityEvent", t)
+            Log.e(TAG, "event error", t)
             AutomationState.update(status = "Error: ${t.message}")
         }
     }
@@ -64,8 +65,7 @@ class SolverAccessibilityService : AccessibilityService() {
         if (question == lastQuestion && now - lastAnswerTime < 1200) return
 
         val answer = ExpressionParser.solve(question) ?: run {
-            Log.w(TAG, "Could not parse: \"$question\"")
-            AutomationState.update(question = question, status = "Found text but could not parse")
+            AutomationState.update(question = question, status = "Could not parse")
             return
         }
 
@@ -81,9 +81,7 @@ class SolverAccessibilityService : AccessibilityService() {
 
         serviceScope.launch {
             try {
-                val liveRoot = rootInActiveWindow
-                gestureHelper.submitAnswer(answer, liveRoot)
-                Log.d(TAG, "Q: \"$question\" -> A: $answer")
+                gestureHelper.submitAnswer(answer, rootInActiveWindow)
             } finally {
                 android.os.Handler(mainLooper).postDelayed({
                     answering = false
@@ -93,33 +91,25 @@ class SolverAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun findQuestionInNodeTree(root: AccessibilityNodeInfo): String? {
-        root.findAccessibilityNodeInfosByViewId(QUESTION_VIEW_ID)?.firstOrNull()?.text?.let {
-            return it.toString()
-        }
-        return searchTreeForExpression(root)
-    }
+    private fun findQuestionInNodeTree(root: AccessibilityNodeInfo): String? =
+        searchTree(root)
 
-    private fun searchTreeForExpression(node: AccessibilityNodeInfo?): String? {
+    private fun searchTree(node: AccessibilityNodeInfo?): String? {
         if (node == null) return null
-        node.text?.toString()?.let { t ->
-            val cleaned = t.trim()
-            if (cleaned.isNotEmpty() && ExpressionParser.solve(cleaned) != null) return cleaned
+        node.text?.toString()?.trim()?.let {
+            if (it.isNotEmpty() && ExpressionParser.solve(it) != null) return it
         }
-        node.contentDescription?.toString()?.let { t ->
-            val cleaned = t.trim()
-            if (cleaned.isNotEmpty() && ExpressionParser.solve(cleaned) != null) return cleaned
+        node.contentDescription?.toString()?.trim()?.let {
+            if (it.isNotEmpty() && ExpressionParser.solve(it) != null) return it
         }
         for (i in 0 until node.childCount) {
             val child = try { node.getChild(i) } catch (_: Exception) { null }
-            val result = searchTreeForExpression(child)
-            if (result != null) return result
+            searchTree(child)?.let { return it }
         }
         return null
     }
 
     override fun onInterrupt() {
         answering = false
-        Log.d(TAG, "Service interrupted")
     }
 }

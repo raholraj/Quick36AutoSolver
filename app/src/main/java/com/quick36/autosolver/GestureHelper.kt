@@ -2,8 +2,8 @@ package com.quick36.autosolver
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
-import android.graphics.Path
 import android.content.Context
+import android.graphics.Path
 import android.os.Handler
 import android.os.Looper
 import android.util.DisplayMetrics
@@ -35,9 +35,7 @@ class GestureHelper(private val service: AccessibilityService) {
         val matches = root.findAccessibilityNodeInfosByText(text) ?: return false
         for (node in matches) {
             var target: AccessibilityNodeInfo? = node
-            while (target != null && !target.isClickable) {
-                target = target.parent
-            }
+            while (target != null && !target.isClickable) target = target.parent
             if (target != null && target.isClickable) {
                 return target.performAction(AccessibilityNodeInfo.ACTION_CLICK)
             }
@@ -52,12 +50,15 @@ class GestureHelper(private val service: AccessibilityService) {
             .addStroke(GestureDescription.StrokeDescription(path, 0, 40))
             .build()
         service.dispatchGesture(gesture, null, null)
+        AutomationState.update(clickInfo = "tap ${(xPercent * 100).toInt()}%,${(yPercent * 100).toInt()}%")
     }
 
     fun tapDigit(digit: Int, root: AccessibilityNodeInfo?) {
         if (!tryNodeClick(root, digit.toString())) {
             val coords = digitLayout[digit] ?: return
             tapAtPercent(coords.first, coords.second)
+        } else {
+            AutomationState.update(clickInfo = "node $digit")
         }
     }
 
@@ -70,14 +71,14 @@ class GestureHelper(private val service: AccessibilityService) {
     fun submitAnswer(answer: Int, root: AccessibilityNodeInfo?) {
         val digits = answer.toString().filter { it.isDigit() }.map { it.digitToInt() }
         if (digits.isEmpty()) return
-        fun tapNext(index: Int) {
-            if (index < digits.size) {
-                tapDigit(digits[index], root)
-                handler.postDelayed({ tapNext(index + 1) }, 90L)
+        fun tapNext(i: Int) {
+            if (i < digits.size) {
+                tapDigit(digits[i], root)
+                handler.postDelayed({ tapNext(i + 1) }, 90L)
             } else {
                 handler.postDelayed({ tapCheckmark(root) }, 120L)
             }
         }
-        handler.postDelayed({ tapNext(0) }, 60L)
+        handler.postDelayed({ tapNext(0) }, 50L)
     }
 }
