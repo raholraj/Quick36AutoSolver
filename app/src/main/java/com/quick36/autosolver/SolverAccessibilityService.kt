@@ -8,19 +8,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-/**
- * Watches Quick36 for math questions and auto-taps the answer.
- */
 class SolverAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "Quick36AutoSolver"
         private const val TARGET_PACKAGE = "ch.quick36.quick36"
-        // Soft dedupe window — same question within this many ms is ignored
-        private const val DEDUPE_MS = 1200L
+        private const val QUESTION_VIEW_ID = "ch.quick36.quick36:id/question_text"
     }
 
     private lateinit var gestureHelper: GestureHelper
+    private val ocrHelper = OcrHelper()
     private val serviceScope = CoroutineScope(Dispatchers.Default)
 
     private var lastQuestion: String? = null
@@ -30,21 +27,26 @@ class SolverAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         gestureHelper = GestureHelper(this)
-        Log.i(TAG, "Service connected — watching $TARGET_PACKAGE")
+        ocrHelper.warmUp()
+        Log.d(TAG, "Service connected and warmed up")
+        AutomationState.update(status = "Service connected")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
-        val pkg = event.packageName?.toString() ?: return
-        if (pkg != TARGET_PACKAGE) return
+        val eventPackage = event.packageName?.toString() ?: return
 
-        when (event.eventType) {
-            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
-            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
-            AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> Unit
-            else -> return
+        // Always track last seen package so the overlay can show it for debugging
+        AutomationState.update(seenPackage = eventPackage)
+
+        if (eventPackage != TARGET_PACKAGE) return
+        if (!AutomationState.isActive) {
+            AutomationState.update(status = "Paused (tap floating button to start)")
+            return
         }
-
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED &&
+            event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+        ) return
         if (answering) return
 
         val root = rootInActiveWindow ?: return
@@ -52,16 +54,18 @@ class SolverAccessibilityService : AccessibilityService() {
             val question = findQuestionInNodeTree(root) ?: return
             handleQuestion(question, root)
         } catch (t: Throwable) {
-            Log.e(TAG, "onAccessibilityEvent error", t)
+            Log.e(TAG, "Error in onAccessibilityEvent", t)
+            AutomationState.update(status = "Error: ${t.message}")
         }
     }
 
     private fun handleQuestion(question: String, root: AccessibilityNodeInfo) {
         val now = System.currentTimeMillis()
-        if (question == lastQuestion && now - lastAnswerTime < DEDUPE_MS) return
+        if (question == lastQuestion && now - lastAnswerTime < 1200) return
 
         val answer = ExpressionParser.solve(question) ?: run {
-            Log.d(TAG, "No parseable expression in: '$question'")
+            Log.w(TAG, "Could not parse: \"$question\"")
+            AutomationState.update(question = question, status = "Found text but could not parse")
             return
         }
 
@@ -69,46 +73,43 @@ class SolverAccessibilityService : AccessibilityService() {
         lastAnswerTime = now
         answering = true
 
-        Log.i(TAG, "SOLVE  $question  =>  $answer")
+        AutomationState.update(
+            question = question,
+            answer = answer.toString(),
+            status = "Answering $question = $answer"
+        )
 
         serviceScope.launch {
             try {
-                // Re-fetch root in case the tree changed
                 val liveRoot = rootInActiveWindow
                 gestureHelper.submitAnswer(answer, liveRoot)
+                Log.d(TAG, "Q: \"$question\" -> A: $answer")
             } finally {
-                // Allow next question after taps have had time to finish
                 android.os.Handler(mainLooper).postDelayed({
                     answering = false
-                }, 800L)
+                    AutomationState.update(status = "Ready")
+                }, 900L)
             }
         }
     }
 
-    /** Walk full tree looking for any text that parses as a + - x / expression. */
     private fun findQuestionInNodeTree(root: AccessibilityNodeInfo): String? {
+        root.findAccessibilityNodeInfosByViewId(QUESTION_VIEW_ID)?.firstOrNull()?.text?.let {
+            return it.toString()
+        }
         return searchTreeForExpression(root)
     }
 
     private fun searchTreeForExpression(node: AccessibilityNodeInfo?): String? {
         if (node == null) return null
-
-        // Check text
         node.text?.toString()?.let { t ->
             val cleaned = t.trim()
-            if (cleaned.isNotEmpty() && ExpressionParser.solve(cleaned) != null) {
-                return cleaned
-            }
+            if (cleaned.isNotEmpty() && ExpressionParser.solve(cleaned) != null) return cleaned
         }
-
-        // Check contentDescription (some games put the question here)
         node.contentDescription?.toString()?.let { t ->
             val cleaned = t.trim()
-            if (cleaned.isNotEmpty() && ExpressionParser.solve(cleaned) != null) {
-                return cleaned
-            }
+            if (cleaned.isNotEmpty() && ExpressionParser.solve(cleaned) != null) return cleaned
         }
-
         for (i in 0 until node.childCount) {
             val child = try { node.getChild(i) } catch (_: Exception) { null }
             val result = searchTreeForExpression(child)
@@ -118,7 +119,7 @@ class SolverAccessibilityService : AccessibilityService() {
     }
 
     override fun onInterrupt() {
-        Log.w(TAG, "Service interrupted")
         answering = false
+        Log.d(TAG, "Service interrupted")
     }
 }
