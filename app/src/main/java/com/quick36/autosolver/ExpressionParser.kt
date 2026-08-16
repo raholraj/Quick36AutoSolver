@@ -8,6 +8,7 @@ package com.quick36.autosolver
 object ExpressionParser {
 
     // Matches: digit(s), optional spaces, operator, optional spaces, digit(s)
+    // Operators: + - x X * /
     private val EXPR_REGEX = Regex("""(\d+)\s*([+\-xX*/])\s*(\d+)""")
 
     /**
@@ -15,12 +16,12 @@ object ExpressionParser {
      * Returns null if no expression found, operator unsupported, or division by zero.
      */
     fun solve(raw: String): Int? {
-        // Normalize common unicode operators before matching
-        val normalized = raw
-            .replace('\u00d7', 'x')  // multiplication sign
-            .replace('\u00f7', '/')  // division sign
+        // Normalize common unicode operators first
+        val cleaned = raw
+            .replace('\u00d7', 'x')  // ×
+            .replace('\u00f7', '/')  // ÷
             .trim()
-        val match = EXPR_REGEX.find(normalized) ?: return null
+        val match = EXPR_REGEX.find(cleaned) ?: return null
         val (aStr, op, bStr) = match.destructured
         val a = aStr.toIntOrNull() ?: return null
         val b = bStr.toIntOrNull() ?: return null
@@ -34,13 +35,14 @@ object ExpressionParser {
     }
 
     /**
-     * Cleans OCR noise conservatively.
+     * Cleans OCR noise conservatively — only correct clear OCR character mistakes.
      */
     fun cleanOcrText(text: String): String {
         return text
             .replace('\u00d7', 'x')
             .replace('\u00f7', '/')
             .replace('X', 'x')
+            // Keep only digits, operators, and spaces
             .filter { it.isDigit() || it in "+-x*/ " }
             .trim()
     }
