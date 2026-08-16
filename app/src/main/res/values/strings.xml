@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">Quick36 AutoSolver</string>
-    <string name="accessibility_service_description">Automatically solves Quick36 math questions</string>
+    <string name="accessibility_service_description">Auto-solves Quick36 math questions (addition, subtraction, multiplication, division). Monitors screen to detect questions and type answers automatically.</string>
 </resources>

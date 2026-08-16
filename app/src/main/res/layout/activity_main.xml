@@ -2,29 +2,47 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:gravity="center"
-    android:padding="24dp">
+    android:orientation="vertical"
+    android:padding="28dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Quick36 AutoSolver"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="24dp" />
 
     <TextView
         android:id="@+id/statusText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textSize="16sp"
-        android:text="Accessibility Service: checking..." />
+        android:textSize="15sp"
+        android:lineSpacingExtra="4dp"
+        android:text="Checking permissions..." />
 
     <Button
         android:id="@+id/openSettingsBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="Open Accessibility Settings" />
+        android:layout_marginTop="28dp"
+        android:text="1. Enable Accessibility Service" />
 
     <Button
         android:id="@+id/enableOverlayBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Enable Floating Control" />
+        android:layout_marginTop="12dp"
+        android:text="2. Enable Floating Overlay" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:textSize="13sp"
+        android:lineSpacingExtra="4dp"
+        android:textColor="#555555"
+        android:text="After both steps:\n• Floating button appears\n• Open Quick36\n• Tap floating button to ON\n• Long-press for debug panel\n• Use Set as Target if package wrong" />
 
 </LinearLayout>
