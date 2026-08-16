@@ -2,10 +2,9 @@
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowContentChanged|typeWindowStateChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
-    android:canPerformGestures="true"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows"
     android:canRetrieveWindowContent="true"
-    android:description="@string/accessibility_service_description"
-    android:notificationTimeout="100"
-    android:settingsActivity="com.quick36.autosolver.MainActivity"
-    android:packageNames="com.quick36.quick36" />
+    android:canPerformGestures="true"
+    android:packageNames="ch.quick36.quick36"
+    android:notificationTimeout="0"
+    android:description="@string/accessibility_service_description" />

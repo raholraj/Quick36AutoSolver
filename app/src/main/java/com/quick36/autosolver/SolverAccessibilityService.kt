@@ -32,11 +32,11 @@ class SolverAccessibilityService : AccessibilityService() {
     companion object {
         private const val TAG = "Quick36AutoSolver"
 
-        // TODO: replace with the real Quick36 package name (adb shell dumpsys window | grep mCurrentFocus)
-        private const val TARGET_PACKAGE = "com.quick36.app"
+        private const val TARGET_PACKAGE = "ch.quick36.quick36"
 
         // TODO: replace with the real resource-id of the question text view, if one exists
-        private const val QUESTION_VIEW_ID = "com.quick36.app:id/question_text"
+        // (find via `adb shell uiautomator dump` while the question screen is showing)
+        private const val QUESTION_VIEW_ID = "ch.quick36.quick36:id/question_text"
     }
 
     private lateinit var gestureHelper: GestureHelper
