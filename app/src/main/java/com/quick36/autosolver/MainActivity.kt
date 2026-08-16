@@ -7,12 +7,6 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 
-/**
- * Simple launcher screen. Its only job is to send the user to the
- * system Accessibility Settings page so they can enable
- * SolverAccessibilityService. There is no in-app UI needed beyond that —
- * all the real work happens in the background service.
- */
 class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -20,13 +14,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         val statusText = findViewById<TextView>(R.id.statusText)
-        val openSettingsBtn = findViewById<Button>(R.id.openSettingsButton)
+        val openSettingsBtn = findViewById<Button>(R.id.openSettingsBtn)
 
-        statusText.text = if (isAccessibilityServiceEnabled()) {
-            "Accessibility Service: ENABLED ✓"
-        } else {
-            "Accessibility Service: NOT enabled"
-        }
+        updateStatus(statusText)
 
         openSettingsBtn.setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -35,19 +25,23 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        findViewById<TextView>(R.id.statusText).text = if (isAccessibilityServiceEnabled()) {
-            "Accessibility Service: ENABLED ✓"
+        updateStatus(findViewById(R.id.statusText))
+    }
+
+    private fun updateStatus(statusText: TextView) {
+        statusText.text = if (isAccessibilityServiceEnabled()) {
+            "Accessibility Service: ENABLED ✓\nOpen Quick36 and start a game."
         } else {
-            "Accessibility Service: NOT enabled"
+            "Accessibility Service: OFF\nTap the button below and enable Quick36 AutoSolver."
         }
     }
 
     private fun isAccessibilityServiceEnabled(): Boolean {
-        val expectedComponentName = "$packageName/${SolverAccessibilityService::class.java.name}"
-        val enabledServices = Settings.Secure.getString(
+        val expected = "$packageName/${SolverAccessibilityService::class.java.name}"
+        val enabled = Settings.Secure.getString(
             contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
         ) ?: return false
-        return enabledServices.split(":").any { it.equals(expectedComponentName, ignoreCase = true) }
+        return enabled.split(':').any { it.equals(expected, ignoreCase = true) }
     }
 }

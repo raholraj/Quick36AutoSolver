@@ -9,127 +9,116 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
- * Core automation service.
- *
- * Flow per screen-change event:
- *   1. Filter to only the target app's package.
- *   2. Try to read the question text straight from the accessibility node tree
- *      (fast path — no OCR needed if the text is a real Android view).
- *   3. Parse the expression and solve it (pure int math, negligible cost).
- *   4. Tap the digit buttons (node click preferred, coordinate gesture fallback).
- *   5. Dedupe against the last-seen question so repeated events for the same
- *      question don't cause duplicate/garbage taps.
- *
- * IMPORTANT — before this works against the real app you must:
- *   - Set the correct target package name below (TARGET_PACKAGE) and in
- *     accessibility_service_config.xml (android:packageNames).
- *   - Set the correct view id in QUESTION_VIEW_ID if you found one via
- *     `adb shell uiautomator dump`. If the text isn't in the tree at all,
- *     wire up the OCR fallback path (see onAccessibilityEvent below).
+ * Watches Quick36 for math questions and auto-taps the answer.
  */
 class SolverAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "Quick36AutoSolver"
-
         private const val TARGET_PACKAGE = "ch.quick36.quick36"
-
-        // TODO: replace with the real resource-id of the question text view, if one exists
-        // (find via `adb shell uiautomator dump` while the question screen is showing)
-        private const val QUESTION_VIEW_ID = "ch.quick36.quick36:id/question_text"
+        // Soft dedupe window — same question within this many ms is ignored
+        private const val DEDUPE_MS = 1200L
     }
 
     private lateinit var gestureHelper: GestureHelper
-    private val ocrHelper = OcrHelper()
     private val serviceScope = CoroutineScope(Dispatchers.Default)
 
     private var lastQuestion: String? = null
     private var lastAnswerTime = 0L
+    private var answering = false
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         gestureHelper = GestureHelper(this)
-        ocrHelper.warmUp()
-        Log.d(TAG, "Service connected and warmed up")
+        Log.i(TAG, "Service connected — watching $TARGET_PACKAGE")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
-        if (event.packageName?.toString() != TARGET_PACKAGE) return
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED &&
-            event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
-        ) return
+        val pkg = event.packageName?.toString() ?: return
+        if (pkg != TARGET_PACKAGE) return
 
-        val root = rootInActiveWindow ?: return
-
-        // ---- Fast path: node tree ----
-        val question = findQuestionInNodeTree(root)
-        if (question != null) {
-            handleQuestion(question, root)
-            return
+        when (event.eventType) {
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
+            AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> Unit
+            else -> return
         }
 
-        // ---- Fallback path: OCR ----
-        // Only wire this up if the fast path above returns null for your target app,
-        // i.e. the question text is custom-drawn (Canvas/Compose/game engine) and not
-        // exposed as a real accessibility node. Requires MediaProjection screen capture
-        // set up separately (see README for the permission-request flow) — omitted here
-        // since it needs a foreground activity to request the capture intent once.
-        // Sketch:
-        // val bitmap = latestScreenCaptureBitmap ?: return
-        // val cropped = ocrHelper.cropToQuestionRegion(bitmap)
-        // ocrHelper.recognize(cropped) { rawText ->
-        //     val cleaned = rawText?.let { ExpressionParser.cleanOcrText(it) } ?: return@recognize
-        //     handleQuestion(cleaned, root)
-        // }
+        if (answering) return
+
+        val root = rootInActiveWindow ?: return
+        try {
+            val question = findQuestionInNodeTree(root) ?: return
+            handleQuestion(question, root)
+        } catch (t: Throwable) {
+            Log.e(TAG, "onAccessibilityEvent error", t)
+        }
     }
 
     private fun handleQuestion(question: String, root: AccessibilityNodeInfo) {
-        // Dedupe: the same content-changed event can fire multiple times for one
-        // screen update. Skip if we already answered this exact question recently.
         val now = System.currentTimeMillis()
-        if (question == lastQuestion && now - lastAnswerTime < 800) return
+        if (question == lastQuestion && now - lastAnswerTime < DEDUPE_MS) return
 
         val answer = ExpressionParser.solve(question) ?: run {
-            Log.w(TAG, "Could not parse expression from: \"$question\"")
+            Log.d(TAG, "No parseable expression in: '$question'")
             return
         }
 
         lastQuestion = question
         lastAnswerTime = now
+        answering = true
+
+        Log.i(TAG, "SOLVE  $question  =>  $answer")
 
         serviceScope.launch {
-            gestureHelper.submitAnswer(answer, root)
-            Log.d(TAG, "Q: \"$question\" -> A: $answer")
+            try {
+                // Re-fetch root in case the tree changed
+                val liveRoot = rootInActiveWindow
+                gestureHelper.submitAnswer(answer, liveRoot)
+            } finally {
+                // Allow next question after taps have had time to finish
+                android.os.Handler(mainLooper).postDelayed({
+                    answering = false
+                }, 800L)
+            }
         }
     }
 
-    /** Looks for the question text via known view id first, then a full-tree regex scan. */
+    /** Walk full tree looking for any text that parses as a + - x / expression. */
     private fun findQuestionInNodeTree(root: AccessibilityNodeInfo): String? {
-        // 1) Try the known resource id, if you found one via uiautomator dump.
-        root.findAccessibilityNodeInfosByViewId(QUESTION_VIEW_ID)?.firstOrNull()?.text?.let {
-            return it.toString()
-        }
-
-        // 2) Fallback: walk the whole tree looking for any node whose text matches
-        //    a simple math expression pattern.
         return searchTreeForExpression(root)
     }
 
     private fun searchTreeForExpression(node: AccessibilityNodeInfo?): String? {
         if (node == null) return null
-        val text = node.text?.toString()
-        if (text != null && ExpressionParser.solve(text) != null) {
-            return text
+
+        // Check text
+        node.text?.toString()?.let { t ->
+            val cleaned = t.trim()
+            if (cleaned.isNotEmpty() && ExpressionParser.solve(cleaned) != null) {
+                return cleaned
+            }
         }
+
+        // Check contentDescription (some games put the question here)
+        node.contentDescription?.toString()?.let { t ->
+            val cleaned = t.trim()
+            if (cleaned.isNotEmpty() && ExpressionParser.solve(cleaned) != null) {
+                return cleaned
+            }
+        }
+
         for (i in 0 until node.childCount) {
-            val result = searchTreeForExpression(node.getChild(i))
+            val child = try { node.getChild(i) } catch (_: Exception) { null }
+            val result = searchTreeForExpression(child)
             if (result != null) return result
         }
         return null
     }
 
     override fun onInterrupt() {
-        Log.d(TAG, "Service interrupted")
+        Log.w(TAG, "Service interrupted")
+        answering = false
     }
 }

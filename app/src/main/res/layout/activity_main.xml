@@ -3,21 +3,22 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="24dp"
-    android:gravity="center_horizontal">
+    android:gravity="center"
+    android:padding="24dp">
 
     <TextView
         android:id="@+id/statusText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:layout_marginBottom="24dp"
-        android:text="Checking accessibility service…" />
+        android:textSize="16sp"
+        android:gravity="center"
+        android:text="Accessibility Service: checking..." />
 
     <Button
-        android:id="@+id/openSettingsButton"
+        android:id="@+id/openSettingsBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
         android:text="Open Accessibility Settings" />
 
 </LinearLayout>
