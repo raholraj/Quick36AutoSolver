@@ -11,7 +11,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textSize="16sp"
-        android:gravity="center"
         android:text="Accessibility Service: checking..." />
 
     <Button
@@ -20,5 +19,12 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:text="Open Accessibility Settings" />
+
+    <Button
+        android:id="@+id/enableOverlayBtn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Enable Floating Control" />
 
 </LinearLayout>
