@@ -18,8 +18,8 @@ object ExpressionParser {
     fun solve(raw: String): Int? {
         // Normalize common unicode operators first
         val cleaned = raw
-            .replace('\u00d7', 'x')  // ×
-            .replace('\u00f7', '/')  // ÷
+            .replace('\u00d7', 'x')  // multiplication sign
+            .replace('\u00f7', '/')  // division sign
             .trim()
         val match = EXPR_REGEX.find(cleaned) ?: return null
         val (aStr, op, bStr) = match.destructured
@@ -35,7 +35,7 @@ object ExpressionParser {
     }
 
     /**
-     * Cleans OCR noise conservatively — only correct clear OCR character mistakes.
+     * Cleans OCR noise conservatively - only correct clear OCR character mistakes.
      */
     fun cleanOcrText(text: String): String {
         return text
