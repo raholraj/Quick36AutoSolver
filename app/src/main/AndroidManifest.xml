@@ -27,7 +27,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Accessibility service — monitors ALL packages so we can detect Quick36 -->
+        <!-- Accessibility service - monitors ALL packages so we can detect Quick36 -->
         <service
             android:name=".SolverAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
